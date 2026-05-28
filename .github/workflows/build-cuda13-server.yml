@@ -1,0 +1,62 @@
+name: Build llama.cpp server (CUDA 13)
+
+on:
+  push:
+    branches:
+      - feature/mtp-gpu-control
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-cuda13-server:
+    name: Build server with CUDA 13
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Install CUDA 13 Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.17
+        with:
+          cuda: '13.0.0'
+          method: 'network'
+
+      - name: Verify CUDA version
+        run: |
+          nvcc --version
+          nvidia-smi
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DGGML_CUDA=ON \
+            -DCMAKE_CUDA_ARCHITECTURES="120;120a" \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build llama server
+        run: |
+          cmake --build build --config Release -j $(nproc)
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: llama-server-cuda13
+          path: build/bin/llama-server
+          retention-days: 7
