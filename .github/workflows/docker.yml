@@ -10,6 +10,11 @@
 name: Publish Docker image
 
 on:
+  push:
+    branches:
+      - feature/mtp-gpu-control
+      - main
+      - master
   workflow_dispatch: # allows manual triggering
     inputs:
       skip_s390x:
