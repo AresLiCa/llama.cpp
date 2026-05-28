@@ -37,9 +37,9 @@ jobs:
         run: |
           conda install -c conda-forge \
             cuda-version=13.3 \
-            cuda-toolkit=13.3 \
+            cuda-nvcc=13.3 \
+            cuda-cudart-dev=13.3 \
             libcudart-dev \
-            libcublas-dev \
             -y
 
       - name: Verify CUDA version
