@@ -3638,6 +3638,37 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
             params.speculative.draft.mparams.path = value;
         }
     ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}).set_env("LLAMA_ARG_SPEC_DRAFT_MODEL"));
+    // MTP-specific GPU placement options (for MTP mode, these override the draft model's GPU settings)
+    add_opt(common_arg(
+        {"--mtp-device", "-devm", "--device-mtp"}, "<dev1,dev2,..>",
+        "comma-separated list of devices to use for offloading the MTP context (only effective with --spec-type mtp)\n"
+        "use --list-devices to see a list of available devices.\n"
+        "default: inherit from the target model's device list",
+        [](common_params & params, const std::string & value) {
+            params.speculative.draft.devices = parse_device_list(value);
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    GGML_ASSERT(params.speculative.draft.n_gpu_layers < 0); // string_format would need to be extended for a default >= 0
+    add_opt(common_arg(
+        {"--mtp-ngl", "-nglm", "--gpu-layers-mtp", "--n-gpu-layers-mtp"}, "N",
+        string_format("max. number of MTP context layers to store in VRAM (only effective with --spec-type mtp)\n"
+            "if not specified, inherits from the target model's --gpu-layers setting\n"
+            "use 'auto' for default, 'all' to offload all layers (default: auto)"),
+        [](common_params & params, const std::string & value) {
+            if (value == "auto") {
+                params.speculative.draft.n_gpu_layers = -1;
+            } else if (value == "all") {
+                params.speculative.draft.n_gpu_layers = -2;
+            } else {
+                params.speculative.draft.n_gpu_layers = std::stoi(value);
+            }
+            if (!llama_supports_gpu_offload()) {
+                fprintf(stderr, "warning: no usable GPU found, --mtp-ngl option will be ignored\n");
+                fprintf(stderr, "warning: one possible reason is that llama.cpp was compiled without GPU support\n");
+                fprintf(stderr, "warning: consult docs/build.md for compilation instructions\n");
+            }
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
     add_opt(common_arg(
         {"--spec-type"}, common_speculative_all_types_str(),
         string_format("comma-separated list of types of speculative decoding to use (default: %s)\n",

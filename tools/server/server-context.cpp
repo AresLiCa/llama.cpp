@@ -940,13 +940,34 @@ private:
             SRV_INF("creating MTP draft context against the target model '%s'\n",
                     params_base.model.path.c_str());
 
-            auto cparams_mtp = common_context_params_to_llama(params_base);
+            // For MTP mode without an explicit draft model, we still load a separate
+            // model_dft with draft-specific GPU settings (devices, n_gpu_layers) so
+            // that the MTP context can have independent GPU placement from the target.
+            auto params_dft = params_base;
+
+            const auto & params_spec = params_base.speculative.draft;
+            if (!params_spec.devices.empty()) {
+                params_dft.devices = params_spec.devices;
+            }
+            if (params_spec.n_gpu_layers != -1) {
+                params_dft.n_gpu_layers = params_spec.n_gpu_layers;
+            }
+
+            auto mparams_dft = common_model_params_to_llama(params_dft);
+
+            model_dft.reset(llama_model_load_from_file(params_dft.model.path.c_str(), mparams_dft));
+            if (model_dft == nullptr) {
+                SRV_ERR("failed to load MTP draft model, '%s'\n", params_dft.model.path.c_str());
+                return false;
+            }
+
+            auto cparams_mtp = common_context_params_to_llama(params_dft);
             cparams_mtp.ctx_type = LLAMA_CONTEXT_TYPE_MTP;
             cparams_mtp.type_k   = params_base.speculative.draft.cache_type_k;
             cparams_mtp.type_v   = params_base.speculative.draft.cache_type_v;
             cparams_mtp.n_rs_seq = 0;
 
-            ctx_dft.reset(llama_init_from_model(model_tgt, cparams_mtp));
+            ctx_dft.reset(llama_init_from_model(model_dft.get(), cparams_mtp));
             if (ctx_dft == nullptr) {
                 SRV_ERR("%s", "failed to create MTP context\n");
                 return false;
