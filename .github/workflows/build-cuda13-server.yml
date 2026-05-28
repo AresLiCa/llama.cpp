@@ -15,53 +15,28 @@ on:
 jobs:
   build-cuda13-server:
     name: Build server with CUDA 13
+    # Run on standard Ubuntu runner (no GPU needed for compilation)
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Build with CUDA 13 Docker image
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential
-
-      - name: Set up Miniconda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          python-version: "3.12"
-          activate-env: true
-
-      - name: Install CUDA 13.3 toolkit from conda-forge
-        run: |
-          conda install -c conda-forge \
-            cuda-version=13.3 \
-            cuda-nvcc=13.3 \
-            cuda-cudart-dev=13.3 \
-            libcudart-dev \
-            -y
-
-      - name: Verify CUDA version
-        run: |
-          which nvcc
-          nvcc --version
-
-      - name: Configure CMake
-        run: |
-          export PATH="$CONDA_PREFIX/bin:$PATH"
-          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
-          cmake -B build \
-            -DGGML_CUDA=ON \
-            -DCMAKE_CUDA_ARCHITECTURES="120;120a" \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build llama server
-        run: |
-          export PATH="$CONDA_PREFIX/bin:$PATH"
-          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
-          cmake --build build --config Release -j $(nproc)
+          # Use nvidia/cuda:13.1.2-devel-ubuntu24.04 as build container (official approach)
+          docker pull nvidia/cuda:13.1.2-devel-ubuntu24.04
+          docker run --rm \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            -e CC=gcc -e CXX=g++ -e CUDAHOSTCXX=g++ \
+            nvidia/cuda:13.1.2-devel-ubuntu24.04 \
+            bash -c "
+              apt-get update && \
+              apt-get install -y gcc g++ build-essential cmake python3 git libssl-dev libgomp1 && \
+              cmake -B build -DGGML_CUDA=ON -DGGML_CPU_ALL_VARIANTS=ON -DLLAMA_BUILD_TESTS=OFF && \
+              cmake --build build --config Release -j\$(nproc)
+            "
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
