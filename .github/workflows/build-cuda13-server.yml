@@ -21,29 +21,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential
 
-      - name: Install CUDA 13 Toolkit
-        uses: Jimver/cuda-toolkit@v0.2.17
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v3
         with:
-          cuda: '13.0.0'
-          method: 'network'
+          auto-update-conda: true
+          python-version: "3.12"
+          activate-env: true
+
+      - name: Install CUDA 13.3 toolkit from conda-forge
+        run: |
+          conda install -c conda-forge \
+            cuda-version=13.3 \
+            cuda-toolkit=13.3 \
+            libcudart-dev \
+            libcublas-dev \
+            -y
 
       - name: Verify CUDA version
         run: |
+          which nvcc
           nvcc --version
-          nvidia-smi
 
       - name: Configure CMake
         run: |
+          export PATH="$CONDA_PREFIX/bin:$PATH"
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
           cmake -B build \
             -DGGML_CUDA=ON \
             -DCMAKE_CUDA_ARCHITECTURES="120;120a" \
@@ -52,6 +59,8 @@ jobs:
 
       - name: Build llama server
         run: |
+          export PATH="$CONDA_PREFIX/bin:$PATH"
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
           cmake --build build --config Release -j $(nproc)
 
       - name: Upload build artifact
