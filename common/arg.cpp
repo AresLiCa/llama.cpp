@@ -830,8 +830,18 @@ static std::vector<ggml_backend_dev_t> parse_device_list(const std::string & val
         ggml_backend_load_all();
         for (const auto & device : dev_names) {
             auto * dev = ggml_backend_dev_by_name(device.c_str());
+            // If not found by name, try as numeric index (e.g. "0", "1")
+            if (!dev) {
+                int idx = 0;
+                try {
+                    idx = std::stoi(device);
+                } catch (...) {}
+                if (idx >= 0 && idx < (int) ggml_backend_dev_count()) {
+                    dev = ggml_backend_dev_get(idx);
+                }
+            }
             if (!dev || ggml_backend_dev_type(dev) == GGML_BACKEND_DEVICE_TYPE_CPU) {
-                throw std::invalid_argument(string_format("invalid device: %s", device.c_str()));
+                throw std::invalid_argument(string_format("invalid device: %s (try --list-devices for valid names)", device.c_str()));
             }
             devices.push_back(dev);
         }
