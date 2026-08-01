@@ -10,16 +10,20 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Set lowercase owner
+        id: owner
+        run: echo "value=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Login
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ steps.owner.outputs.value }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push hello
         uses: docker/build-push-action@v7
         with:
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/hello:test
+          tags: ghcr.io/${{ steps.owner.outputs.value }}/hello:test
           file: .devops/Dockerfile.hello
