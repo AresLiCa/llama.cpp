@@ -53,6 +53,12 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           context: .
+          build-contexts: |
+            dockerfile=docker-image://alpine:latest
+          file: dockerfile
+          inline-script: |
+            FROM alpine:latest
+            RUN echo "Dummy image for pipeline test" > /test.txt
           platforms: linux/amd64
           # 2. 替换为极简 inline 镜像构建
           inline: |
