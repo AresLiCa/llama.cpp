@@ -77,7 +77,7 @@ LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.source=$IMAGE_SOURCE
 
 RUN apt-get update \
-    && apt-get install -y libgomp1 curl ffmpeg \
+    && apt-get install -y libgomp1 curl ffmpeg libnccl-dev \
     && apt autoremove -y \
     && apt clean -y \
     && rm -rf /tmp/* /var/tmp/* \
