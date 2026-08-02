@@ -9,7 +9,7 @@ permissions:
 jobs:
   build_cuda13_server:
     name: Build and push CUDA13 server image
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
 
     steps:
       - name: Check out the repo
@@ -52,7 +52,7 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           outputs: type=image,name=ghcr.io/${{ steps.owner.outputs.value }}/llama.cpp,push=true,name-canonical=true,oci-mediatypes=true
           file: .devops/cuda.Dockerfile
           target: server
